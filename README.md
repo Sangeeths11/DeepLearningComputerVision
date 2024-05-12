@@ -1,4 +1,4 @@
-# DeepLearningKeinVortritt
-SwissData Geo Image detection
+#Deep Learning for Computer Vision
 
-I am a Contributer
+## Beschreibung
+Dieses Repository enthält den Code für die Wartelinie-Erkennung auf SwissData Geo-Bildern mithilfe von Deep Learning für Computer Vision.
