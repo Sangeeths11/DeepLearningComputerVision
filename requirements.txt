@@ -2,3 +2,8 @@ opencv-python
 matplotlib
 scikit-learn
 seaborn
+numpy
+tensorflow
+keras
+pandas
+jupyter
