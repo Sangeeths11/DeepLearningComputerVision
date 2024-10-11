@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
@@ -12,7 +14,9 @@ from sklearn.metrics import classification_report, confusion_matrix
 import wandb
 from wandb.integration.keras import WandbMetricsLogger
 
+# Sweep configuration
 sweep_config = {
+    'name': 'CNN-Sweep',
     'method': 'bayes',
     'metric': {'name': 'val_accuracy', 'goal': 'maximize'},
     'parameters': {
@@ -38,8 +42,8 @@ class ImageClassifier:
                 img_array = img_to_array(img)
                 images.append(img_array)
                 labels.append(label)
-            except Exception as e:
-                print(f"Fehler beim Laden des Bildes {img_path}: {e}")
+            except Exception:
+                pass  # Ignore image load errors
         return np.array(images), np.array(labels)
 
     def prepare_data(self, path_with_sign, path_without_sign):
@@ -79,7 +83,6 @@ class ImageClassifier:
         ])
         model.compile(optimizer=Adam(learning_rate=config.learning_rate), loss='binary_crossentropy', metrics=['accuracy'])
         self.model = model
-        print(self.model.summary())
 
     def train(self, train_images, train_labels, validation_images, validation_labels):
         train_datagen = ImageDataGenerator(
@@ -108,7 +111,6 @@ class ImageClassifier:
 
     def evaluate(self, test_images, test_labels):
         test_loss, test_acc = self.model.evaluate(test_images, test_labels)
-        print(f"Testgenauigkeit: {test_acc:.4f}, Testverlust: {test_loss:.4f}")
         wandb.log({'test_loss': test_loss, 'test_acc': test_acc})
         return test_loss, test_acc
 
@@ -133,7 +135,9 @@ class ImageClassifier:
 
         plt.suptitle('Model Training - Basic CNN')
         plt.tight_layout()
-        plt.show()
+        plt.savefig("training_plot.png")  # Save the plot instead of showing it
+        wandb.log({"training_plot": wandb.Image("training_plot.png")})
+        plt.close()  # Close the plot to avoid tkinter errors
 
     def predict_and_report(self, test_images, test_labels):
         predictions = (self.model.predict(test_images) > 0.5).astype(int)
@@ -144,15 +148,15 @@ class ImageClassifier:
                 "true_label": test_labels[i]
             })
 
-        print(classification_report(test_labels, predictions))
-        namelabels = {0: 'Wartelinie', 1: 'keine Wartelinie'}
+        # Log confusion matrix
         cm = confusion_matrix(test_labels, predictions)
-        sns.heatmap(cm, annot=True, cmap='Blues', fmt='d', xticklabels=namelabels.values(), yticklabels=namelabels.values())
+        sns.heatmap(cm, annot=True, cmap='Blues', fmt='d', xticklabels=['Wartelinie', 'keine Wartelinie'], yticklabels=['Wartelinie', 'keine Wartelinie'])
         plt.xlabel('Predicted Labels')
         plt.ylabel('True Labels')
         plt.title('Confusion Matrix - Basic CNN Model')
-        wandb.log({"confusion-matrix": wandb.Image(plt)})
-        plt.show()
+        plt.savefig("confusion_matrix.png")
+        wandb.log({"confusion_matrix": wandb.Image("confusion_matrix.png")})
+        plt.close()
 
     def save_model(self):
         model_artifact = wandb.Artifact('cnn-model', type='model')
