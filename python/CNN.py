@@ -12,13 +12,21 @@ from sklearn.metrics import classification_report, confusion_matrix
 import wandb
 from wandb.integration.keras import WandbMetricsLogger
 
+sweep_config = {
+    'method': 'bayes',
+    'metric': {'name': 'val_accuracy', 'goal': 'maximize'},
+    'parameters': {
+        'learning_rate': {'min': 0.00001, 'max': 0.001},
+        'batch_size': {'values': [16, 32, 64]},
+        'dropout': {'min': 0.2, 'max': 0.5}
+    }
+}
 
 class ImageClassifier:
     def __init__(self, image_size=(250, 250), batch_size=32, project_name="VisionTransformer"):
         self.image_size = image_size
         self.batch_size = batch_size
         self.model = None
-
         wandb.init(project=project_name)
 
     def load_images_from_folder(self, folder, label):
@@ -46,7 +54,7 @@ class ImageClassifier:
         
         return train_images, test_images, validation_images, train_labels, test_labels, validation_labels
 
-    def build_model(self):
+    def build_model(self, config):
         model = Sequential([
             Conv2D(32, (3, 3), activation='relu', input_shape=(self.image_size[0], self.image_size[1], 3)),
             BatchNormalization(),
@@ -66,10 +74,10 @@ class ImageClassifier:
             
             Flatten(),
             Dense(128, activation='relu'),
-            Dropout(0.5),
+            Dropout(config.dropout),
             Dense(1, activation='sigmoid')
         ])
-        model.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=Adam(learning_rate=config.learning_rate), loss='binary_crossentropy', metrics=['accuracy'])
         self.model = model
         print(self.model.summary())
 
@@ -91,7 +99,7 @@ class ImageClassifier:
         history = self.model.fit(
             train_generator,
             steps_per_epoch=len(train_images) // self.batch_size,
-            epochs=50,
+            epochs=5,
             validation_data=validation_generator,
             validation_steps=len(validation_images) // self.batch_size,
             callbacks=[WandbMetricsLogger(), reduce_lr, early_stopping]
@@ -129,8 +137,14 @@ class ImageClassifier:
 
     def predict_and_report(self, test_images, test_labels):
         predictions = (self.model.predict(test_images) > 0.5).astype(int)
-        print(classification_report(test_labels, predictions))
+        for i in range(len(test_images)):
+            wandb.log({
+                "image": [wandb.Image(test_images[i], caption=f"Prediction: {predictions[i]}, True: {test_labels[i]}")],
+                "prediction": predictions[i],
+                "true_label": test_labels[i]
+            })
 
+        print(classification_report(test_labels, predictions))
         namelabels = {0: 'Wartelinie', 1: 'keine Wartelinie'}
         cm = confusion_matrix(test_labels, predictions)
         sns.heatmap(cm, annot=True, cmap='Blues', fmt='d', xticklabels=namelabels.values(), yticklabels=namelabels.values())
@@ -140,24 +154,37 @@ class ImageClassifier:
         wandb.log({"confusion-matrix": wandb.Image(plt)})
         plt.show()
 
+    def save_model(self):
+        model_artifact = wandb.Artifact('cnn-model', type='model')
+        self.model.save('cnn_model.h5')
+        model_artifact.add_file('cnn_model.h5')
+        wandb.log_artifact(model_artifact)
 
 if __name__ == "__main__":
-    classifier = ImageClassifier()
-    
-    path_with_sign = 'data/y'
-    path_without_sign = 'data/n'
+    sweep_id = wandb.sweep(sweep_config, project='VisionTransformer')
 
-    train_images, test_images, validation_images, train_labels, test_labels, validation_labels = classifier.prepare_data(
-        path_with_sign, path_without_sign
-    )
+    def train_sweep():
+        with wandb.init():
+            config = wandb.config
+            classifier = ImageClassifier(batch_size=config.batch_size)
+            
+            path_with_sign = 'data/y'
+            path_without_sign = 'data/n'
 
-    classifier.build_model()
-    history = classifier.train(train_images, train_labels, validation_images, validation_labels)
+            train_images, test_images, validation_images, train_labels, test_labels, validation_labels = classifier.prepare_data(
+                path_with_sign, path_without_sign
+            )
 
-    classifier.evaluate(test_images, test_labels)
+            classifier.build_model(config)
+            history = classifier.train(train_images, train_labels, validation_images, validation_labels)
 
-    classifier.plot_training(history)
+            classifier.evaluate(test_images, test_labels)
 
-    classifier.predict_and_report(test_images, test_labels)
+            classifier.plot_training(history)
 
+            classifier.predict_and_report(test_images, test_labels)
+
+            classifier.save_model()
+
+    wandb.agent(sweep_id, train_sweep)
     wandb.finish()
