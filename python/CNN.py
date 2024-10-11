@@ -164,12 +164,16 @@ class ImageClassifier:
         model_artifact.add_file('cnn_model.h5')
         wandb.log_artifact(model_artifact)
 
+
 if __name__ == "__main__":
     sweep_id = wandb.sweep(sweep_config, project='VisionTransformer')
 
     def train_sweep():
-        with wandb.init():
+        with wandb.init() as run:
             config = wandb.config
+
+            run.name = f"lr_{config.learning_rate}_bs_{config.batch_size}_do_{config.dropout:.2f}"
+            
             classifier = ImageClassifier(batch_size=config.batch_size)
             
             path_with_sign = 'data/y'
@@ -192,3 +196,4 @@ if __name__ == "__main__":
 
     wandb.agent(sweep_id, train_sweep)
     wandb.finish()
+
