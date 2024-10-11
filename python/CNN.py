@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 import wandb
@@ -48,36 +49,52 @@ class ImageClassifier:
     def build_model(self):
         model = Sequential([
             Conv2D(32, (3, 3), activation='relu', input_shape=(self.image_size[0], self.image_size[1], 3)),
+            BatchNormalization(),
             MaxPooling2D(2, 2),
+            
             Conv2D(64, (3, 3), activation='relu'),
+            BatchNormalization(),
             MaxPooling2D(2, 2),
+            
             Conv2D(128, (3, 3), activation='relu'),
+            BatchNormalization(),
             MaxPooling2D(2, 2),
+            
+            Conv2D(256, (3, 3), activation='relu'),
+            BatchNormalization(),
+            MaxPooling2D(2, 2),
+            
             Flatten(),
             Dense(128, activation='relu'),
+            Dropout(0.5),
             Dense(1, activation='sigmoid')
         ])
-        model.compile(optimizer=Adam(), loss='binary_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
         self.model = model
         print(self.model.summary())
 
     def train(self, train_images, train_labels, validation_images, validation_labels):
         train_datagen = ImageDataGenerator(
-            rotation_range=20, width_shift_range=0.2, height_shift_range=0.2,
-            shear_range=0.2, zoom_range=0.2, horizontal_flip=True, fill_mode='nearest'
+            rotation_range=30, width_shift_range=0.2, height_shift_range=0.2,
+            shear_range=0.2, zoom_range=0.2, horizontal_flip=True,
+            brightness_range=[0.8, 1.2],
+            fill_mode='nearest'
         )
         validation_datagen = ImageDataGenerator()
 
         train_generator = train_datagen.flow(train_images, train_labels, batch_size=self.batch_size)
         validation_generator = validation_datagen.flow(validation_images, validation_labels, batch_size=self.batch_size)
 
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=0.00001)
+        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+
         history = self.model.fit(
             train_generator,
             steps_per_epoch=len(train_images) // self.batch_size,
-            epochs=10,
+            epochs=50,
             validation_data=validation_generator,
             validation_steps=len(validation_images) // self.batch_size,
-            callbacks=[WandbMetricsLogger()]
+            callbacks=[WandbMetricsLogger(), reduce_lr, early_stopping]
         )
         return history
 
