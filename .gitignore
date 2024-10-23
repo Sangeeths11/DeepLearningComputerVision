@@ -1,3 +1,7 @@
+# Files
+model_metrics.tex
+
+# Folders
 .venv/
 /data
 /wandb
