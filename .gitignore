@@ -3,5 +3,6 @@ model_metrics.tex
 
 # Folders
 .venv/
+.vscode/
 /data
 /wandb
