@@ -6,3 +6,4 @@ model_metrics.tex
 .vscode/
 /data
 wandb
+__pycache__
