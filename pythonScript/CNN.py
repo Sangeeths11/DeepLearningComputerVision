@@ -222,6 +222,8 @@ if __name__ == "__main__":
 
     sweep_id: str = input("SweepID: ")
 
+    os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+
     def train_sweep():
         with wandb.init() as run:
             config = wandb.config

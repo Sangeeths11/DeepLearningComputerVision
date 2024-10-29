@@ -28,5 +28,21 @@ pip install -r "${HOME}/VisionTransformer/requirements.txt"
 Schlussendlich wird der Code ausgeführt.
 
 ```shell
-python3 "${HOME}/VisionTransformer/CNN.py"
+python3 "${HOME}/VisionTransformer/pythonScript/CNN.py"
+```
+
+###
+Neuer Sweep erstellen
+
+```shell
+python3 "${HOME}/VisionTransformer/pythonScript/modules/create_sweep.py"
+```
+
+Das Script erstellt einen neuen Sweep mit dem angegebenen Namen und gibt die benötigte Sweep URL aus. Die generierte Sweep ID (`silvan-wiedmer-fhgr/VisionTransformer/<sweep-id>`) muss im Anschliesenden Befehl eingetragen werden.
+
+###
+Agent auf Sweep Anwenden
+
+```shell
+python3 "${HOME}/VisionTransformer/pythonScript/CNN.py"
 ```
