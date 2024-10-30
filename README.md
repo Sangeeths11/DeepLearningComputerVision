@@ -31,8 +31,7 @@ Schlussendlich wird der Code ausgeführt.
 python3 "${HOME}/VisionTransformer/pythonScript/CNN.py"
 ```
 
-###
-Neuer Sweep erstellen
+### Neuer Sweep erstellen
 
 ```shell
 python3 "${HOME}/VisionTransformer/pythonScript/modules/create_sweep.py"
@@ -40,8 +39,7 @@ python3 "${HOME}/VisionTransformer/pythonScript/modules/create_sweep.py"
 
 Das Script erstellt einen neuen Sweep mit dem angegebenen Namen und gibt die benötigte Sweep URL aus. Die generierte Sweep ID (`silvan-wiedmer-fhgr/VisionTransformer/<sweep-id>`) muss im Anschliesenden Befehl eingetragen werden.
 
-###
-Agent auf Sweep Anwenden
+### Agent auf Sweep Anwenden
 
 ```shell
 python3 "${HOME}/VisionTransformer/pythonScript/CNN.py"
