@@ -10,7 +10,7 @@ from modules.data_augmentation import (
     get_test_image_data_generator,
     get_train_image_data_generator,
 )
-from modules.data_preprocessing import apply_canny, apply_morphology, black_and_white
+from modules.data_preprocessing import ImageType, load_images_from_folder
 from modules.wandb_integration import get_sweep_run_name, log_evaluation, log_image
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
@@ -18,51 +18,31 @@ from wandb.integration.keras import WandbMetricsLogger
 
 import wandb
 
-wandb.init(project="VisionTransformer")
+# wandb.init(project="VisionTransformer")
 
 image_size = (250, 250)
 path_with_sign = os.path.join("..", "data", "y")
 path_without_sign = os.path.join("..", "data", "n")
 
-
-def load_images_from_folder(folder, label, target_size, img_type="normal"):
-    images, labels = [], []
-    for filename in os.listdir(folder):
-        img_path = os.path.join(folder, filename)
-        try:
-            img = cv2.imread(img_path)
-            if img_type == "canny":
-                img = apply_canny(img, image_size)
-            elif img_type == "morphology":
-                img = apply_morphology(img, target_size)
-            elif img_type == "normal":
-                img = black_and_white(img, target_size)
-            else:
-                raise ValueError(f"Unknown image type '{img_type}'")
-            images.append(img)
-            labels.append(label)
-        except Exception as e:
-            print(f"Error loading image {img_path}: {e}")
-    return np.array(images), np.array(labels)
-
-
 images_with_sign_canny, labels_with_sign_canny = load_images_from_folder(
-    path_with_sign, 0, image_size, img_type="canny"
+    path_with_sign, 0, image_size, img_type=ImageType.CANNY
 )
 images_without_sign_canny, labels_without_sign_canny = load_images_from_folder(
-    path_without_sign, 1, image_size, img_type="canny"
+    path_without_sign, 1, image_size, img_type=ImageType.CANNY
 )
 images_with_sign_morphology, labels_with_sign_morphology = load_images_from_folder(
-    path_with_sign, 0, image_size, img_type="morphology"
+    path_with_sign, 0, image_size, img_type=ImageType.MORPHOLOGY
 )
 images_without_sign_morphology, labels_without_sign_morphology = (
-    load_images_from_folder(path_without_sign, 1, image_size, img_type="morphology")
+    load_images_from_folder(
+        path_without_sign, 1, image_size, img_type=ImageType.MORPHOLOGY
+    )
 )
 images_with_sign_normal, labels_with_sign_normal = load_images_from_folder(
-    path_with_sign, 0, image_size, img_type="normal"
+    path_with_sign, 0, image_size, img_type=ImageType.NORMAL
 )
 images_without_sign_normal, labels_without_sign_normal = load_images_from_folder(
-    path_without_sign, 1, image_size, img_type="normal"
+    path_without_sign, 1, image_size, img_type=ImageType.NORMAL
 )
 
 images_with_sign = np.concatenate(

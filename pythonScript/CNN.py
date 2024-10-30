@@ -10,6 +10,7 @@ from modules.data_augmentation import (
     get_test_image_data_generator,
     get_train_image_data_generator,
 )
+from modules.data_preprocessing import ImageType, load_images_from_folder
 from modules.wandb_integration import (
     get_sweep_run_name,
     log_evaluation,
@@ -35,29 +36,14 @@ class ImageClassifier:
         self.image_size = image_size
         self.batch_size = batch_size
         self.model = None
-        wandb.init(project=project_name)
-
-    def load_images_from_folder(self, folder, label):
-        images, labels = [], []
-        for filename in os.listdir(folder):
-            img_path = os.path.join(folder, filename)
-            try:
-                img = preprocessing.image.load_img(
-                    img_path, target_size=self.image_size
-                )
-                img_array = preprocessing.image.img_to_array(img)
-                images.append(img_array)
-                labels.append(label)
-            except Exception:
-                pass  # Ignore image load errors
-        return np.array(images), np.array(labels)
+        # wandb.init(project=project_name)
 
     def prepare_data(self, path_with_sign, path_without_sign):
-        images_with_sign, labels_with_sign = self.load_images_from_folder(
-            path_with_sign, 1
+        images_with_sign, labels_with_sign = load_images_from_folder(
+            path_with_sign, 1, self.image_size, ImageType.ORIGINAL
         )
-        images_without_sign, labels_without_sign = self.load_images_from_folder(
-            path_without_sign, 0
+        images_without_sign, labels_without_sign = load_images_from_folder(
+            path_without_sign, 0, self.image_size, ImageType.ORIGINAL
         )
 
         all_images = (

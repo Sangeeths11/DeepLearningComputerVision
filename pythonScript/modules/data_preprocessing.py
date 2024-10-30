@@ -1,5 +1,44 @@
+import os
+from enum import Enum
+from pathlib import Path
+from typing import Tuple
+
 import cv2
 import numpy as np
+
+
+class ImageType(Enum):
+    CANNY = "canny"
+    MORPHOLOGY = "morphology"
+    NORMAL = "normal"
+    ORIGINAL = "original"
+
+
+# This function does to much - should be one for loading image and one for applying cmbw
+def load_images_from_folder(
+    folder: Path,
+    label: int,
+    target_size: Tuple[int],
+    img_type: ImageType = ImageType.NORMAL,
+) -> Tuple[np.ndarray]:
+    images, labels = [], []
+    for filename in os.listdir(folder):
+        img_path = os.path.join(folder, filename)
+        try:
+            img = cv2.imread(img_path)
+        except Exception as e:
+            print(f"Error loading image {img_path}: {e}")
+
+        if img_type == ImageType.CANNY:
+            img = apply_canny(img, target_size)
+        elif img_type == ImageType.MORPHOLOGY:
+            img = apply_morphology(img, target_size)
+        elif img_type == ImageType.NORMAL:
+            img = black_and_white(img, target_size)
+
+        images.append(img)
+        labels.append(label)
+    return np.array(images), np.array(labels)
 
 
 def apply_canny(image, image_size):
