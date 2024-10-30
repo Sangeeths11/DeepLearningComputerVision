@@ -11,7 +11,6 @@ from modules.data_augmentation import (
     get_train_image_data_generator,
 )
 from modules.wandb_integration import (
-    get_sweep_config,
     get_sweep_run_name,
     log_evaluation,
     log_image,
@@ -27,9 +26,6 @@ matplotlib.use("Agg")
 
 # Path Configuration
 DATA_PATH = os.path.join(Path.home(), "VisionTransformer", "data")
-
-# Sweep configuration
-sweep_config = get_sweep_config("CNN-Sweep")
 
 
 class ImageClassifier:
@@ -224,7 +220,7 @@ if __name__ == "__main__":
 
     os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
-    def train_sweep():
+    def sweep_agent():
         with wandb.init() as run:
             config = wandb.config
 
@@ -259,6 +255,6 @@ if __name__ == "__main__":
 
             classifier.save_model()
 
-    wandb.agent(sweep_id, train_sweep)
+    wandb.agent(sweep_id, sweep_agent)
 
     wandb.finish()
