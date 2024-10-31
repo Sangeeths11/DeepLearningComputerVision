@@ -1,6 +1,6 @@
 import os
+import sys
 
-import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -102,7 +102,7 @@ def build_model(dropout, learning_rate):
 
 if __name__ == "__main__":
 
-    sweep_id: str = input("SweepID: ")
+    sweep_id: str = sys.argv[1]
 
     os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
