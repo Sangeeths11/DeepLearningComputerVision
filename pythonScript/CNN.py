@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -26,7 +27,7 @@ import wandb
 matplotlib.use("Agg")
 
 # Path Configuration
-DATA_PATH = os.path.join(Path.home(), "VisionTransformer", "data")
+DATA_PATH = os.path.join(".", "data")
 
 
 class ImageClassifier:
@@ -36,7 +37,7 @@ class ImageClassifier:
         self.image_size = image_size
         self.batch_size = batch_size
         self.model = None
-        # wandb.init(project=project_name)
+        wandb.init(project=project_name)
 
     def prepare_data(self, path_with_sign, path_without_sign):
         images_with_sign, labels_with_sign = load_images_from_folder(
@@ -202,7 +203,7 @@ class ImageClassifier:
 
 if __name__ == "__main__":
 
-    sweep_id: str = input("SweepID: ")
+    sweep_id: str = sys.argv[1]
 
     os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
