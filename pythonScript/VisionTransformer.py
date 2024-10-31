@@ -247,7 +247,7 @@ def evaluate_model(model, criterion, test_loader, class_names):
     wandb.log({"confusion_matrix": wandb.Image(fig)})
     plt.close(fig)
 
-    wandb.log({"test_loss": test_loss, "test_accuracy": accuracy})
+    wandb.log({"test_loss": test_loss, "test_acc": accuracy})
 
 
 if __name__ == "__main__":
