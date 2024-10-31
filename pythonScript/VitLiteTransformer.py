@@ -1,43 +1,25 @@
 import os
-import torch
-from torch.utils.data import DataLoader, Dataset, random_split
-from torchvision import transforms
-from PIL import Image
-import torch.optim as optim
-import torch.nn as nn
-import numpy as np
-from sklearn.metrics import confusion_matrix
-import seaborn as sns
-import timm
+import sys
+
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+import timm
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from modules.data_preprocessing import apply_canny, apply_morphology, black_and_white
+from modules.wandb_integration import get_sweep_run_name
+from PIL import Image
+from sklearn.metrics import confusion_matrix
+from torch.utils.data import DataLoader, Dataset, random_split
+from torchvision import transforms
+
 import wandb
 
-wandb.init(project="ViT-Lite")
+# wandb.init(project="ViT-Lite")
 
-def apply_canny(image, image_size):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    tight = cv2.Canny(blurred, 140, 160)
-    tight = cv2.resize(tight, image_size)
-    tight = np.expand_dims(tight, axis=-1)
-    return tight
-
-def apply_morphology(image, target_size):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 190, 210, cv2.THRESH_BINARY)
-    kernel = np.ones((5,5), np.uint8)
-    dilated = cv2.dilate(thresh, kernel, iterations=1)
-    eroded = cv2.erode(dilated, kernel, iterations=1)
-    image = cv2.resize(eroded, target_size)
-    image = np.expand_dims(image, axis=-1)
-    return image
-
-def black_and_white(image, target_size):
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    image = cv2.resize(image, target_size)
-    image = np.expand_dims(image, axis=-1)
-    return image
 
 class VerkehrsschilderDataset(Dataset):
     def __init__(self, root_dir, transform=None):
@@ -46,7 +28,7 @@ class VerkehrsschilderDataset(Dataset):
         self.images = []
         self.labels = []
 
-        for label, subfolder in enumerate(['y', 'n']):
+        for label, subfolder in enumerate(["y", "n"]):
             folder_path = os.path.join(self.root_dir, subfolder)
             for image_name in os.listdir(folder_path):
                 self.images.append(os.path.join(folder_path, image_name))
@@ -64,39 +46,47 @@ class VerkehrsschilderDataset(Dataset):
         morphology_image = apply_morphology(image, (224, 224))
         bw_image = black_and_white(image, (224, 224))
 
-        combined_image = np.concatenate((canny_image, morphology_image, bw_image), axis=-1)
+        combined_image = np.concatenate(
+            (canny_image, morphology_image, bw_image), axis=-1
+        )
         combined_image = Image.fromarray(np.uint8(combined_image))
         if self.transform:
             combined_image = self.transform(combined_image)
 
         return combined_image, label
 
-transform = transforms.Compose([
-    transforms.RandomResizedCrop(224),
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(15),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
 
-dataset = VerkehrsschilderDataset('data', transform=transform)
+transform = transforms.Compose(
+    [
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(15),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
+
+dataset = VerkehrsschilderDataset("data", transform=transform)
 
 total_count = len(dataset)
 train_count = int(0.7 * total_count)
 valid_count = int(0.15 * total_count)
 test_count = total_count - train_count - valid_count
 
-train_dataset, valid_dataset, test_dataset = random_split(dataset, [train_count, valid_count, test_count])
+train_dataset, valid_dataset, test_dataset = random_split(
+    dataset, [train_count, valid_count, test_count]
+)
 
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 valid_loader = DataLoader(valid_dataset, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-class_names = ['Wartelinie', 'keine Wartelinie']
+class_names = ["Wartelinie", "keine Wartelinie"]
+
 
 class ViTLiteModel(nn.Module):
     def __init__(self, num_classes=2, dropout_rate=0.8):
         super(ViTLiteModel, self).__init__()
-        self.vit = timm.create_model('vit_tiny_patch16_224', pretrained=True)
+        self.vit = timm.create_model("vit_tiny_patch16_224", pretrained=True)
         self.vit.head = nn.Identity()
         self.num_features = self.vit.embed_dim
         self.fc1 = nn.Linear(self.num_features, 768)
@@ -116,22 +106,12 @@ class ViTLiteModel(nn.Module):
         x = self.fc2(x)
         return x
 
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = ViTLiteModel().to(device)
 
 criterion = nn.CrossEntropyLoss()
 
-sweep_config = {
-    "method": "bayes",
-    "metric": {"name": "val_accuracy", "goal": "maximize"},
-    "parameters": {
-        "learning_rate": {"min": 0.00001, "max": 0.001},
-        "dropout": {"min": 0.3, "max": 0.6},
-        "batch_size": {"values": [16, 32, 64]}
-    }
-}
-
-sweep_id = wandb.sweep(sweep_config, project="ViT-Lite")
 
 def validate_model(model, criterion, valid_loader):
     model.eval()
@@ -155,16 +135,26 @@ def validate_model(model, criterion, valid_loader):
 
     return validation_loss, validation_accuracy
 
-def train_model(model, criterion, optimizer, scheduler, train_loader, valid_loader, num_epochs=25, patience=5):
+
+def train_model(
+    model,
+    criterion,
+    optimizer,
+    scheduler,
+    train_loader,
+    valid_loader,
+    num_epochs=25,
+    patience=5,
+):
     model.train()
-    best_val_loss = float('inf')
+    best_val_loss = float("inf")
     patience_counter = 0
 
     history = {
-        'train_loss': [],
-        'train_accuracy': [],
-        'val_loss': [],
-        'val_accuracy': []
+        "train_loss": [],
+        "train_accuracy": [],
+        "val_loss": [],
+        "val_accuracy": [],
     }
 
     for epoch in range(num_epochs):
@@ -191,27 +181,30 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, valid_load
 
         val_loss, val_accuracy = validate_model(model, criterion, valid_loader)
 
-        wandb.log({
-            "train_loss": epoch_loss,
-            "train_accuracy": epoch_accuracy,
-            "val_loss": val_loss,
-            "val_accuracy": val_accuracy
-        })
+        wandb.log(
+            {
+                "train_loss": epoch_loss,
+                "train_accuracy": epoch_accuracy,
+                "val_loss": val_loss,
+                "val_accuracy": val_accuracy,
+            }
+        )
 
-        history['train_loss'].append(epoch_loss)
-        history['train_accuracy'].append(epoch_accuracy)
-        history['val_loss'].append(val_loss)
-        history['val_accuracy'].append(val_accuracy)
+        history["train_loss"].append(epoch_loss)
+        history["train_accuracy"].append(epoch_accuracy)
+        history["val_loss"].append(val_loss)
+        history["val_accuracy"].append(val_accuracy)
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), 'best_model.pth')
+            torch.save(model.state_dict(), "best_model.pth")
             patience_counter = 0
         else:
             patience_counter += 1
             if patience_counter >= patience:
                 break
     return history
+
 
 def evaluate_model(model, criterion, test_loader, class_names):
     model.eval()
@@ -239,47 +232,80 @@ def evaluate_model(model, criterion, test_loader, class_names):
 
     cm = confusion_matrix(all_labels, all_preds)
     fig, ax = plt.subplots(figsize=(10, 7))
-    sns.heatmap(cm, annot=True, cmap='Blues', fmt='d', xticklabels=class_names, yticklabels=class_names, ax=ax)
-    ax.set_xlabel('Predicted Labels')
-    ax.set_ylabel('True Labels')
-    ax.set_title('Confusion Matrix - ViT Lite')
+    sns.heatmap(
+        cm,
+        annot=True,
+        cmap="Blues",
+        fmt="d",
+        xticklabels=class_names,
+        yticklabels=class_names,
+        ax=ax,
+    )
+    ax.set_xlabel("Predicted Labels")
+    ax.set_ylabel("True Labels")
+    ax.set_title("Confusion Matrix - ViT Lite")
     wandb.log({"confusion_matrix": wandb.Image(fig)})
     plt.close(fig)
 
-    wandb.log({"test_loss": test_loss, "test_accuracy": accuracy})
+    wandb.log({"test_loss": test_loss, "test_acc": accuracy})
 
-def train_sweep():
-    with wandb.init() as run:
-        config = wandb.config
-        model = ViTLiteModel(dropout_rate=config.dropout).to(device)
-        optimizer = optim.Adam(model.fc2.parameters(), lr=config.learning_rate, weight_decay=0.01)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
-        train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
-        valid_loader = DataLoader(valid_dataset, batch_size=config.batch_size, shuffle=False)
 
-        history = train_model(model, criterion, optimizer, scheduler, train_loader, valid_loader, num_epochs=25)
+if __name__ == "__main__":
 
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-        axes[0].plot(history['train_accuracy'], label='Train')
-        axes[0].plot(history['val_accuracy'], label='Validation')
-        axes[0].set_title('Model Accuracy')
-        axes[0].set_xlabel('Epoch')
-        axes[0].set_ylabel('Accuracy')
-        axes[0].legend(loc='upper left')
+    sweep_id: str = sys.argv[1]
 
-        axes[1].plot(history['train_loss'], label='Train')
-        axes[1].plot(history['val_loss'], label='Validation')
-        axes[1].set_title('Model Loss')
-        axes[1].set_xlabel('Epoch')
-        axes[1].set_ylabel('Loss')
-        axes[1].legend(loc='upper left')
+    def train_sweep():
+        with wandb.init() as run:
+            config = wandb.config
 
-        plt.suptitle('Model Training - ViT Lite', fontsize=16)
-        plt.tight_layout()
-        wandb.log({"training_plot": wandb.Image(fig)})
-        plt.close(fig)
+            run.name = get_sweep_run_name(
+                config.learning_rate, config.batch_size, config.dropout
+            )
 
-        evaluate_model(model, criterion, test_loader, class_names)
+            model = ViTLiteModel(dropout_rate=config.dropout).to(device)
+            optimizer = optim.Adam(
+                model.fc2.parameters(), lr=config.learning_rate, weight_decay=0.01
+            )
+            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+            train_loader = DataLoader(
+                train_dataset, batch_size=config.batch_size, shuffle=True
+            )
+            valid_loader = DataLoader(
+                valid_dataset, batch_size=config.batch_size, shuffle=False
+            )
 
-wandb.agent(sweep_id, train_sweep)
-wandb.finish()
+            history = train_model(
+                model,
+                criterion,
+                optimizer,
+                scheduler,
+                train_loader,
+                valid_loader,
+                num_epochs=25,
+            )
+
+            fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+            axes[0].plot(history["train_accuracy"], label="Train")
+            axes[0].plot(history["val_accuracy"], label="Validation")
+            axes[0].set_title("Model Accuracy")
+            axes[0].set_xlabel("Epoch")
+            axes[0].set_ylabel("Accuracy")
+            axes[0].legend(loc="upper left")
+
+            axes[1].plot(history["train_loss"], label="Train")
+            axes[1].plot(history["val_loss"], label="Validation")
+            axes[1].set_title("Model Loss")
+            axes[1].set_xlabel("Epoch")
+            axes[1].set_ylabel("Loss")
+            axes[1].legend(loc="upper left")
+
+            plt.suptitle("Model Training - ViT Lite", fontsize=16)
+            plt.tight_layout()
+            wandb.log({"training_plot": wandb.Image(fig)})
+            plt.close(fig)
+
+            evaluate_model(model, criterion, test_loader, class_names)
+
+    wandb.agent(sweep_id, train_sweep)
+
+    wandb.finish()
