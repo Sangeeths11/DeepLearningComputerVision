@@ -68,7 +68,7 @@ transform = transforms.Compose(
     ]
 )
 
-dataset = VerkehrsschilderDataset("../data", transform=transform)
+dataset = VerkehrsschilderDataset("data", transform=transform)
 
 total_count = len(dataset)
 train_count = int(0.7 * total_count)
