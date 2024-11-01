@@ -42,5 +42,13 @@ Das Script erstellt einen neuen Sweep mit dem angegebenen Namen und gibt die ben
 ### Agent auf Sweep Anwenden
 
 ```shell
-python3 "${HOME}/VisionTransformer/pythonScript/CNN.py"
+python3 "${HOME}/VisionTransformer/pythonScript/CNN.py" <sweep-id>
+```
+
+### Scripts
+
+Um das starten von mehreren Agenten zu vereinfachen, enthälte der Ordner `Scripts` für jedes Modell ein Skript um die Agenten auf einen Sweep anzuwenden. Dazu muss der folgende Befeh ausgeführt werden.
+
+```shell
+bash Scripts/start_<model_name>_sweep_agents.sh <sweep-id>
 ```
