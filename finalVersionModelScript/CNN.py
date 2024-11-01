@@ -26,7 +26,7 @@ import wandb
 
 matplotlib.use("Agg")
 
-DATA_PATH = os.path.join(".", "data")
+DATA_PATH = os.path.join("../", "data")
 
 
 class ImageClassifier:
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
     optimizer = SweepOptimizer("VisionTransformer", "CNN-SWEEP", "test_acc")
     best_params = optimizer.get_best_parameters()
-    
+
     classifier = ImageClassifier(batch_size=best_params["batch_size"])
 
     path_with_sign = os.path.join(DATA_PATH, "y")
