@@ -1,4 +1,5 @@
 import wandb
+from pathlib import Path
 
 class SweepOptimizer:
     def __init__(self, project_name, sweep_name, metric):
@@ -32,9 +33,16 @@ class SweepOptimizer:
         print(f"Best run: {best_run.name} with {best_run.summary.get(self.metric, 0)} for metric '{self.metric}'")
         
         return best_params
-    
-if __name__ == "__main__":
-    optimizer = SweepOptimizer("VisionTransformer", "CNN-SWEEP", "test_acc")
-    best_params = optimizer.get_best_parameters()
-    print("Beste Hyperparameter:", best_params)
+
+def log_evaluation(loss: float, accuracy: float) -> None:
+    wandb.log({"test_loss": loss, "test_acc": accuracy})
+
+
+def log_image(image_name: str, image):
+    wandb.log({image_name: wandb.Image(image)})
+
+def log_model_artifact(model_name: str, model_file_path: Path):
+    model_artifact = wandb.Artifact(model_name, type="model")
+    model_artifact.add_file(model_file_path)
+    wandb.log_artifact(model_artifact)
 
