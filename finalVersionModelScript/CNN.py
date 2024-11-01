@@ -6,14 +6,14 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from keras import callbacks, layers, models, optimizers, preprocessing
+from keras import callbacks, layers, models, optimizers
 from modules.data_augmentation import (
     get_test_image_data_generator,
     get_train_image_data_generator,
 )
 from modules.data_preprocessing import ImageType, load_images_from_folder
 from modules.wandb_integration import (
-    get_sweep_run_name,
+    SweepOptimizer,
     log_evaluation,
     log_image,
     log_model_artifact,
@@ -26,7 +26,6 @@ import wandb
 
 matplotlib.use("Agg")
 
-# Path Configuration
 DATA_PATH = os.path.join(".", "data")
 
 
@@ -90,12 +89,12 @@ class ImageClassifier:
                 layers.MaxPooling2D(2, 2),
                 layers.Flatten(),
                 layers.Dense(128, activation="relu"),
-                layers.Dropout(config.dropout),
+                layers.Dropout(config["dropout"]),
                 layers.Dense(1, activation="sigmoid"),
             ]
         )
         model.compile(
-            optimizer=optimizers.Adam(learning_rate=config.learning_rate),
+            optimizer=optimizers.Adam(learning_rate=config["learning_rate"]),
             loss="binary_crossentropy",
             metrics=["accuracy"],
         )
@@ -156,9 +155,6 @@ class ImageClassifier:
         plt.suptitle("Model Training - Basic CNN")
         plt.tight_layout()
         log_image("training_plot.png", plt)
-        # plt.savefig("training_plot.png")  # Save the plot instead of showing it
-        # wandb.log({"training_plot": wandb.Image("training_plot.png")})
-        # plt.close()  # Close the plot to avoid tkinter errors
 
     def predict_and_report(self, test_images, test_labels):
         predictions = (self.model.predict(test_images) > 0.5).astype(int)
@@ -176,7 +172,6 @@ class ImageClassifier:
                 }
             )
 
-        # Log confusion matrix
         cm = confusion_matrix(test_labels, predictions)
         sns.heatmap(
             cm,
@@ -190,11 +185,6 @@ class ImageClassifier:
         plt.ylabel("True Labels")
         plt.title("Confusion Matrix - Basic CNN Model")
         log_image("confusion_matrix.png", plt)
-        """
-        plt.savefig("confusion_matrix.png")
-        wandb.log({"confusion_matrix": wandb.Image("confusion_matrix.png")})
-        plt.close()
-        """
 
     def save_model(self):
         self.model.save("cnn_model.h5")
@@ -202,46 +192,30 @@ class ImageClassifier:
 
 
 if __name__ == "__main__":
-
-    sweep_id: str = sys.argv[1]
-
     os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+    optimizer = SweepOptimizer("VisionTransformer", "CNN-SWEEP", "test_acc")
+    best_params = optimizer.get_best_parameters()
+    
+    classifier = ImageClassifier(batch_size=best_params["batch_size"])
 
-    def sweep_agent():
-        with wandb.init() as run:
-            config = wandb.config
+    path_with_sign = os.path.join(DATA_PATH, "y")
+    path_without_sign = os.path.join(DATA_PATH, "n")
+    (
+        train_images,
+        test_images,
+        validation_images,
+        train_labels,
+        test_labels,
+        validation_labels,
+    ) = classifier.prepare_data(path_with_sign, path_without_sign)
 
-            run.name = get_sweep_run_name(
-                config.learning_rate, config.batch_size, config.dropout
-            )
+    classifier.build_model(best_params)
+    history = classifier.train(
+        train_images, train_labels, validation_images, validation_labels
+    )
 
-            classifier = ImageClassifier(batch_size=config.batch_size)
-
-            path_with_sign = os.path.join(DATA_PATH, "y")
-            path_without_sign = os.path.join(DATA_PATH, "n")
-
-            (
-                train_images,
-                test_images,
-                validation_images,
-                train_labels,
-                test_labels,
-                validation_labels,
-            ) = classifier.prepare_data(path_with_sign, path_without_sign)
-
-            classifier.build_model(config)
-            history = classifier.train(
-                train_images, train_labels, validation_images, validation_labels
-            )
-
-            classifier.evaluate(test_images, test_labels)
-
-            classifier.plot_training(history)
-
-            classifier.predict_and_report(test_images, test_labels)
-
-            classifier.save_model()
-
-    wandb.agent(sweep_id, sweep_agent)
-
+    classifier.evaluate(test_images, test_labels)
+    classifier.plot_training(history)
+    classifier.predict_and_report(test_images, test_labels)
+    classifier.save_model()
     wandb.finish()
