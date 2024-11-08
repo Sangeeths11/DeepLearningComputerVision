@@ -7,3 +7,4 @@ model_metrics.tex
 /data
 wandb
 __pycache__
+artifacts/
