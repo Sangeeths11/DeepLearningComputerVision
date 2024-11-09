@@ -40,7 +40,7 @@ class ArtifactDataset(Dataset):
     def __getitem__(self, index):
         image = cv2.resize(self.images[index], (224, 224))
 
-        combined_image = Image.fromarray(np.uint8(image))
+        combined_image = Image.fromarray(np.uint8(image * 255))
 
         if self.transform:
             combined_image = self.transform(combined_image)
@@ -317,7 +317,9 @@ if __name__ == "__main__":
                 transform,
             )
 
-            training_loader = DataLoader(training_dataset, batch_size=32, shuffle=True)
+            training_loader = DataLoader(
+                training_dataset, batch_size=config.batch_size, shuffle=True
+            )
 
             validation_dataset = ArtifactDataset(
                 "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
@@ -327,7 +329,7 @@ if __name__ == "__main__":
             )
 
             validation_loader = DataLoader(
-                validation_dataset, batch_size=32, shuffle=False
+                validation_dataset, batch_size=config.batch_size, shuffle=False
             )
 
             test_dataset = ArtifactDataset(
@@ -337,7 +339,9 @@ if __name__ == "__main__":
                 transform,
             )
 
-            test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+            test_loader = DataLoader(
+                test_dataset, batch_size=config.batch_size, shuffle=False
+            )
 
             history = train_model(
                 model,
