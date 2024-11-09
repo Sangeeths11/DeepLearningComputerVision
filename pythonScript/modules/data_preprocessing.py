@@ -14,10 +14,15 @@ class ImageType(Enum):
     ORIGINAL = "original"
 
 
+class Label(Enum):
+    WITHOUT_SIGN = 0
+    WITH_SIGN = 1
+
+
 # This function does to much - should be one for loading image and one for applying cmbw
 def load_images_from_folder(
     folder: Path,
-    label: int,
+    label: Label,
     target_size: Tuple[int],
     img_type: ImageType = ImageType.NORMAL,
 ) -> Tuple[np.ndarray]:
@@ -37,7 +42,7 @@ def load_images_from_folder(
             img = black_and_white(img, target_size)
 
         images.append(img)
-        labels.append(label)
+        labels.append(label.value)
     return np.array(images), np.array(labels)
 
 
