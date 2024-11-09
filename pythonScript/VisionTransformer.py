@@ -214,9 +214,9 @@ def train_model(
         wandb.log(
             {
                 "train_loss": epoch_loss,
-                "train_accuracy": epoch_accuracy,
+                "train_accuracy": epoch_accuracy / 100.0,
                 "val_loss": val_loss,
-                "val_accuracy": val_accuracy,
+                "val_accuracy": val_accuracy / 100.0,
             }
         )
 
@@ -279,7 +279,7 @@ def evaluate_model(model, criterion, test_loader, class_names):
 
     f1 = f1_score(all_labels, all_preds)
 
-    log_evaluation(test_loss, accuracy, f1)
+    log_evaluation(test_loss, accuracy / 100.0, f1)
 
 
 if __name__ == "__main__":
