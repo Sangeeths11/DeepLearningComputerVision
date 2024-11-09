@@ -30,10 +30,10 @@ def build_model(dropout, learning_rate):
     x = layers.Dense(128, activation="relu", kernel_regularizer=regularizers.l2(0.01))(
         x
     )
-    x = layers.BatchNormalization()(x)
+    x = layers.BatchNormalization(name="batch_norm_1")(x)
     x = layers.Dropout(dropout)(x)
     x = layers.Dense(64, activation="relu", kernel_regularizer=regularizers.l2(0.01))(x)
-    x = layers.BatchNormalization()(x)
+    x = layers.BatchNormalization(name="batch_norm_2")(x)
     predictions = layers.Dense(1, activation="sigmoid")(x)
     model = models.Model(inputs=base_model.input, outputs=predictions)
     model.compile(
