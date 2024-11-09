@@ -12,7 +12,7 @@ from modules.data_augmentation import (
 )
 from modules.data_preprocessing import ImageType, load_images_from_folder
 from modules.wandb_integration import get_sweep_run_name, log_evaluation, log_image
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score
 from sklearn.model_selection import train_test_split
 from wandb.integration.keras import WandbMetricsLogger
 
@@ -114,19 +114,64 @@ if __name__ == "__main__":
                 config.learning_rate, config.batch_size, config.dropout
             )
 
+            # Load Dataset
+            artifact = run.use_artifact(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                type="dataset",
+            )
+
+            artifact_dir = artifact.download()
+
+            # Get Training Data
+            training_artifact = np.load(
+                os.path.join(artifact_dir, "training-preprocessing.npy")
+            )
+            training_images = training_artifact["images"]
+            training_labels = training_artifact["labels"]
+
+            # Get Validation Data
+            validation_artifact = np.load(
+                os.path.join(artifact_dir, "validation-preprocessing.npy")
+            )
+            validation_images = validation_artifact["images"]
+            validation_labels = validation_artifact["labels"]
+
+            # Get Test Data
+            test_artifact = np.load(
+                os.path.join(artifact_dir, "test-preprocessing.npy")
+            )
+            test_images = test_artifact["images"]
+            test_labels = test_artifact["labels"]
+
+            train_datagen = get_train_image_data_generator()
+            validation_datagen = get_test_image_data_generator()
+
+            train_generator = train_datagen.flow(
+                training_images, training_labels, batch_size=config.batch_size
+            )
+            validation_generator = validation_datagen.flow(
+                validation_images, validation_labels, batch_size=config.batch_size
+            )
+
             model = build_model(config.dropout, config.learning_rate)
 
             history = model.fit(
-                train_images,
-                train_labels,
+                train_generator,
+                steps_per_epoch=len(training_images) // config.batch_size,
                 batch_size=config.batch_size,
                 epochs=20,
-                validation_split=0.10,
+                validation_data=validation_generator,
+                validation_steps=len(validation_images) // config.batch_size,
                 callbacks=[WandbMetricsLogger()],
             )
 
             test_loss, test_acc = model.evaluate(test_images, test_labels)
-            log_evaluation(test_loss, test_acc)
+
+            model_prediction = (model.predict(test_images) > 0.5).astype(int)
+
+            f1 = f1_score(test_labels, model_prediction)
+
+            log_evaluation(test_loss, test_acc, f1)
 
             fig, axes = plt.subplots(1, 2, figsize=(12, 5))
             axes[0].plot(history.history["accuracy"], label="Train")
