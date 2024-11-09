@@ -18,7 +18,7 @@ from modules.wandb_integration import (
     log_image,
     log_model_artifact,
 )
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.model_selection import train_test_split
 from wandb.integration.keras import WandbMetricsLogger
 
@@ -131,7 +131,12 @@ class ImageClassifier:
 
     def evaluate(self, test_images, test_labels):
         test_loss, test_acc = self.model.evaluate(test_images, test_labels)
-        log_evaluation(test_loss, test_acc)
+
+        model_prediction = self.model.predict(test_images)
+
+        f1 = f1_score(test_labels, model_prediction)
+
+        log_evaluation(test_loss, test_acc, f1)
         return test_loss, test_acc
 
     def plot_training(self, history):
@@ -217,6 +222,36 @@ if __name__ == "__main__":
 
             classifier = ImageClassifier(batch_size=config.batch_size)
 
+            # Load Dataset
+            artifact = run.use_artifact(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                type="dataset",
+            )
+
+            artifact_dir = artifact.download()
+
+            # Get Training Data
+            training_artifact = np.load(
+                os.path.join(artifact_dir, "training-preprocessing.npy")
+            )
+            training_images = training_artifact["images"]
+            training_labels = training_artifact["labels"]
+
+            # Get Validation Data
+            validation_artifact = np.load(
+                os.path.join(artifact_dir, "validation-preprocessing.npy")
+            )
+            validation_images = validation_artifact["images"]
+            validation_labels = validation_artifact["labels"]
+
+            # Get Test Data
+            test_artifact = np.load(
+                os.path.join(artifact_dir, "test-preprocessing.npy")
+            )
+            test_images = test_artifact["images"]
+            test_labels = test_artifact["labels"]
+
+            """
             path_with_sign = os.path.join(DATA_PATH, "y")
             path_without_sign = os.path.join(DATA_PATH, "n")
 
@@ -228,10 +263,11 @@ if __name__ == "__main__":
                 test_labels,
                 validation_labels,
             ) = classifier.prepare_data(path_with_sign, path_without_sign)
+            """
 
             classifier.build_model(config)
             history = classifier.train(
-                train_images, train_labels, validation_images, validation_labels
+                training_images, training_labels, validation_images, validation_labels
             )
 
             classifier.evaluate(test_images, test_labels)
