@@ -132,7 +132,7 @@ class ImageClassifier:
     def evaluate(self, test_images, test_labels):
         test_loss, test_acc = self.model.evaluate(test_images, test_labels)
 
-        model_prediction = self.model.predict(test_images)
+        model_prediction = (self.model.predict(test_images) > 0.5).astype(int)
 
         f1 = f1_score(test_labels, model_prediction)
 
