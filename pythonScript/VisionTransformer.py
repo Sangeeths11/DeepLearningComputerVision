@@ -95,7 +95,7 @@ transform = transforms.Compose(
     ]
 )
 
-
+"""
 dataset = VerkehrsschilderDataset("data", transform=transform)
 
 total_count = len(dataset)
@@ -110,7 +110,9 @@ train_dataset, valid_dataset, test_dataset = random_split(
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 valid_loader = DataLoader(valid_dataset, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-class_names = ["Wartelinie", "keine Wartelinie"]
+"""
+
+class_names = ["keine Wartelinie", "Wartelinie"]
 
 
 class CustomViT(nn.Module):
@@ -315,9 +317,7 @@ if __name__ == "__main__":
                 transform,
             )
 
-            training_loader = DataLoader(
-                training_dataset, batch_size=config.batch_size, shuffle=True
-            )
+            training_loader = DataLoader(training_dataset, batch_size=32, shuffle=True)
 
             validation_dataset = ArtifactDataset(
                 "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
@@ -327,7 +327,7 @@ if __name__ == "__main__":
             )
 
             validation_loader = DataLoader(
-                validation_dataset, batch_size=config.batch_size, shuffle=False
+                validation_dataset, batch_size=32, shuffle=False
             )
 
             test_dataset = ArtifactDataset(
@@ -337,9 +337,7 @@ if __name__ == "__main__":
                 transform,
             )
 
-            test_loader = DataLoader(
-                test_dataset, batch_size=config.batch_size, shuffle=False
-            )
+            test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
             history = train_model(
                 model,
