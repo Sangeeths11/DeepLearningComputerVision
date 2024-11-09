@@ -9,9 +9,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from modules.data_preprocessing import apply_canny, apply_morphology, black_and_white
-from modules.wandb_integration import get_sweep_run_name
+from modules.wandb_integration import get_sweep_run_name, log_evaluation
 from PIL import Image
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms
 from torchvision.models import vit_b_16
@@ -275,7 +275,9 @@ def evaluate_model(model, criterion, test_loader, class_names):
     wandb.log({"confusion_matrix": wandb.Image(fig)})
     plt.close(fig)
 
-    wandb.log({"test_loss": test_loss, "test_acc": accuracy})
+    f1 = f1_score(all_labels, all_preds)
+
+    log_evaluation(test_loss, accuracy, f1)
 
 
 if __name__ == "__main__":
