@@ -21,6 +21,26 @@ import wandb
 # wandb.init(project="VisionTransformer")
 
 
+class ArtifactDataset(Dataset):
+    def __init__(self, artifact_uri: str, artifact_name: str, run, transform=None):
+        self.artifact_uri = artifact_uri
+        self.transform = transform
+
+        # Download Artifact from Wandb
+        artifact = run.use_artifact(artifact_uri, type="dataset")
+        artifact_dir = artifact.download()
+        artifact_data = np.load(os.path.join(artifact_dir, artifact_name))
+
+        self.images = artifact_data["images"]
+        self.labels = artifact_data["labels"]
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        return self.images[index], self.labels[index]
+
+
 class VerkehrsschilderDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir
@@ -67,6 +87,7 @@ transform = transforms.Compose(
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ]
 )
+
 
 dataset = VerkehrsschilderDataset("data", transform=transform)
 
@@ -267,11 +288,48 @@ if __name__ == "__main__":
                 model.fc2.parameters(), lr=config.learning_rate, weight_decay=0.01
             )
             scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+
+            """
             train_loader = DataLoader(
                 train_dataset, batch_size=config.batch_size, shuffle=True
             )
             valid_loader = DataLoader(
                 valid_dataset, batch_size=config.batch_size, shuffle=False
+            )
+            """
+
+            # Load Data
+            training_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "training-preprocessing.npy",
+                run,
+                transform,
+            )
+
+            training_loader = DataLoader(
+                training_dataset, batch_size=config.batch_size, shuffle=True
+            )
+
+            validation_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "validation-preprocessing.npy",
+                run,
+                transform,
+            )
+
+            validation_loader = DataLoader(
+                validation_dataset, batch_size=config.batch_size, shuffle=False
+            )
+
+            test_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "test-preprocessing.npy",
+                run,
+                transform,
+            )
+
+            test_loader = DataLoader(
+                test_dataset, batch_size=config.batch_size, shuffle=False
             )
 
             history = train_model(
@@ -279,8 +337,8 @@ if __name__ == "__main__":
                 criterion,
                 optimizer,
                 scheduler,
-                train_loader,
-                valid_loader,
+                training_loader,
+                validation_loader,
                 num_epochs=25,
             )
 
