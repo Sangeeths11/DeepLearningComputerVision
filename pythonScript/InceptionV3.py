@@ -18,62 +18,6 @@ from wandb.integration.keras import WandbMetricsLogger
 
 import wandb
 
-# wandb.init(project="VisionTransformer")
-
-image_size = (250, 250)
-path_with_sign = os.path.join("..", "data", "y")
-path_without_sign = os.path.join("..", "data", "n")
-
-images_with_sign_canny, labels_with_sign_canny = load_images_from_folder(
-    path_with_sign, 0, image_size, img_type=ImageType.CANNY
-)
-images_without_sign_canny, labels_without_sign_canny = load_images_from_folder(
-    path_without_sign, 1, image_size, img_type=ImageType.CANNY
-)
-images_with_sign_morphology, labels_with_sign_morphology = load_images_from_folder(
-    path_with_sign, 0, image_size, img_type=ImageType.MORPHOLOGY
-)
-images_without_sign_morphology, labels_without_sign_morphology = (
-    load_images_from_folder(
-        path_without_sign, 1, image_size, img_type=ImageType.MORPHOLOGY
-    )
-)
-images_with_sign_normal, labels_with_sign_normal = load_images_from_folder(
-    path_with_sign, 0, image_size, img_type=ImageType.NORMAL
-)
-images_without_sign_normal, labels_without_sign_normal = load_images_from_folder(
-    path_without_sign, 1, image_size, img_type=ImageType.NORMAL
-)
-
-images_with_sign = np.concatenate(
-    (images_with_sign_canny, images_with_sign_morphology, images_with_sign_normal),
-    axis=-1,
-)
-images_without_sign = np.concatenate(
-    (
-        images_without_sign_canny,
-        images_without_sign_morphology,
-        images_without_sign_normal,
-    ),
-    axis=-1,
-)
-labels_with_sign = np.array(labels_with_sign_canny)
-labels_without_sign = np.array(labels_without_sign_canny)
-
-all_images = np.concatenate((images_with_sign, images_without_sign), axis=0)
-all_labels = np.concatenate((labels_with_sign, labels_without_sign), axis=0)
-all_images = all_images.astype("float32") / 255.0
-
-train_images, test_images, train_labels, test_labels = train_test_split(
-    all_images, all_labels, test_size=0.2, random_state=42
-)
-
-train_datagen = get_train_image_data_generator()
-
-test_datagen = get_test_image_data_generator()
-train_generator = train_datagen.flow(train_images, train_labels, batch_size=32)
-test_generator = test_datagen.flow(test_images, test_labels, batch_size=32)
-
 base_model = applications.InceptionV3(
     weights="imagenet", include_top=False, input_tensor=None
 )
