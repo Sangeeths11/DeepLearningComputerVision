@@ -38,7 +38,14 @@ class ArtifactDataset(Dataset):
         return len(self.images)
 
     def __getitem__(self, index):
-        return self.images[index], self.labels[index]
+        image = cv2.resize(self.images[index], (224, 224))
+
+        combined_image = Image.fromarray(np.uint8(image))
+
+        if self.transform:
+            combined_image = self.transform(combined_image)
+
+        return combined_image, self.labels[index]
 
 
 class VerkehrsschilderDataset(Dataset):
