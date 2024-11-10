@@ -8,7 +8,12 @@ import seaborn as sns
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from modules.data_preprocessing import apply_canny, apply_morphology, black_and_white
+from modules.data_preprocessing import (
+    ArtifactDataset,
+    apply_canny,
+    apply_morphology,
+    black_and_white,
+)
 from modules.wandb_integration import get_sweep_run_name, log_evaluation
 from PIL import Image
 from sklearn.metrics import confusion_matrix, f1_score
@@ -19,33 +24,6 @@ from torchvision.models import vit_b_16
 import wandb
 
 # wandb.init(project="VisionTransformer")
-
-
-class ArtifactDataset(Dataset):
-    def __init__(self, artifact_uri: str, artifact_name: str, run, transform=None):
-        self.artifact_uri = artifact_uri
-        self.transform = transform
-
-        # Download Artifact from Wandb
-        artifact = run.use_artifact(artifact_uri, type="dataset")
-        artifact_dir = artifact.download()
-        artifact_data = np.load(os.path.join(artifact_dir, artifact_name))
-
-        self.images = artifact_data["images"]
-        self.labels = artifact_data["labels"]
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, index):
-        image = cv2.resize(self.images[index], (224, 224))
-
-        combined_image = Image.fromarray(np.uint8(image * 255))
-
-        if self.transform:
-            combined_image = self.transform(combined_image)
-
-        return combined_image, self.labels[index]
 
 
 class VerkehrsschilderDataset(Dataset):

@@ -5,6 +5,8 @@ from typing import Tuple
 
 import cv2
 import numpy as np
+from PIL import Image
+from torch.utils.data import Dataset
 
 
 class ImageType(Enum):
@@ -17,6 +19,33 @@ class ImageType(Enum):
 class Label(Enum):
     WITHOUT_SIGN = 0
     WITH_SIGN = 1
+
+
+class ArtifactDataset(Dataset):
+    def __init__(self, artifact_uri: str, artifact_name: str, run, transform=None):
+        self.artifact_uri = artifact_uri
+        self.transform = transform
+
+        # Download Artifact from Wandb
+        artifact = run.use_artifact(artifact_uri, type="dataset")
+        artifact_dir = artifact.download()
+        artifact_data = np.load(os.path.join(artifact_dir, artifact_name))
+
+        self.images = artifact_data["images"]
+        self.labels = artifact_data["labels"]
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        image = cv2.resize(self.images[index], (224, 224))
+
+        combined_image = Image.fromarray(np.uint8(image * 255))
+
+        if self.transform:
+            combined_image = self.transform(combined_image)
+
+        return combined_image, self.labels[index]
 
 
 # This function does to much - should be one for loading image and one for applying cmbw
