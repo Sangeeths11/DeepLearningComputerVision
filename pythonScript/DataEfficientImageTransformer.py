@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from modules.data_preprocessing import (  # type: ignore
+    ArtifactDataset,
     apply_canny,
     apply_morphology,
     black_and_white,
@@ -71,6 +72,7 @@ transform = transforms.Compose(
     ]
 )
 
+"""
 dataset = VerkehrsschilderDataset(DATA_PATH, transform=transform)
 
 total_count = len(dataset)
@@ -85,7 +87,9 @@ train_dataset, valid_dataset, test_dataset = random_split(
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 valid_loader = DataLoader(valid_dataset, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-class_names = ["Wartelinie", "keine Wartelinie"]
+"""
+
+class_names = ["keine Wartelinie", "Wartelinie"]
 
 
 class DeiTModel(nn.Module):
@@ -270,11 +274,47 @@ if __name__ == "__main__":
                 optimizer, T_max=50, eta_min=0.0001
             )
 
+            """
             train_loader = DataLoader(
                 train_dataset, batch_size=config.batch_size, shuffle=True
             )
             valid_loader = DataLoader(
                 valid_dataset, batch_size=config.batch_size, shuffle=False
+            )
+            """
+
+            # Load Data
+            training_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "training-preprocessing.npy",
+                run,
+                transform,
+            )
+
+            training_loader = DataLoader(
+                training_dataset, batch_size=config.batch_size, shuffle=True
+            )
+
+            validation_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "validation-preprocessing.npy",
+                run,
+                transform,
+            )
+
+            validation_loader = DataLoader(
+                validation_dataset, batch_size=config.batch_size, shuffle=False
+            )
+
+            test_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "test-preprocessing.npy",
+                run,
+                transform,
+            )
+
+            test_loader = DataLoader(
+                test_dataset, batch_size=config.batch_size, shuffle=False
             )
 
             history = train_model(
@@ -282,8 +322,8 @@ if __name__ == "__main__":
                 criterion,
                 optimizer,
                 scheduler,
-                train_loader,
-                valid_loader,
+                training_loader,
+                validation_loader,
                 num_epochs=25,
             )
 
