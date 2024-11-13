@@ -95,7 +95,7 @@ class_names = ["keine Wartelinie", "Wartelinie"]
 class DeiTModel(nn.Module):
     def __init__(self, num_classes=2, dropout_rate=0.5):
         super(DeiTModel, self).__init__()
-        self.deit = timm.create_model("deit-small-patch16-224", pretrained=True)
+        self.deit = timm.create_model("deit_small_patch16_224", pretrained=True)
         self.deit.head = nn.Identity()
         self.num_features = self.deit.embed_dim
 
