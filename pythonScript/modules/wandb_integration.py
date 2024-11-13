@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import wandb
 
 
@@ -19,8 +20,8 @@ def get_sweep_run_name(learning_rate: float, batch_size: int, dropout: float) ->
     return f"lr_{learning_rate}_bs_{batch_size}_do_{dropout:.2f}"
 
 
-def log_evaluation(loss: float, accuracy: float) -> None:
-    wandb.log({"test_loss": loss, "test_acc": accuracy})
+def log_evaluation(loss: float, accuracy: float, f1: float = 0) -> None:
+    wandb.log({"test_loss": loss, "test_acc": accuracy, "test_f1": f1})
 
 
 def log_image(image_name: str, image):

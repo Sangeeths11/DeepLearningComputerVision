@@ -9,10 +9,15 @@ import timm
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from modules.data_preprocessing import apply_canny, apply_morphology, black_and_white
-from modules.wandb_integration import get_sweep_run_name
+from modules.data_preprocessing import (
+    ArtifactDataset,
+    apply_canny,
+    apply_morphology,
+    black_and_white,
+)
+from modules.wandb_integration import get_sweep_run_name, log_evaluation
 from PIL import Image
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms
 
@@ -66,6 +71,7 @@ transform = transforms.Compose(
     ]
 )
 
+"""
 dataset = VerkehrsschilderDataset("data", transform=transform)
 
 total_count = len(dataset)
@@ -80,7 +86,8 @@ train_dataset, valid_dataset, test_dataset = random_split(
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 valid_loader = DataLoader(valid_dataset, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-class_names = ["Wartelinie", "keine Wartelinie"]
+"""
+class_names = ["keine Wartelinie", "Wartelinie"]
 
 
 class ViTLiteModel(nn.Module):
@@ -184,9 +191,9 @@ def train_model(
         wandb.log(
             {
                 "train_loss": epoch_loss,
-                "train_accuracy": epoch_accuracy,
+                "train_accuracy": epoch_accuracy / 100.0,
                 "val_loss": val_loss,
-                "val_accuracy": val_accuracy,
+                "val_accuracy": val_accuracy / 100.0,
             }
         )
 
@@ -247,7 +254,9 @@ def evaluate_model(model, criterion, test_loader, class_names):
     wandb.log({"confusion_matrix": wandb.Image(fig)})
     plt.close(fig)
 
-    wandb.log({"test_loss": test_loss, "test_acc": accuracy})
+    f1 = f1_score(all_labels, all_preds)
+
+    log_evaluation(test_loss, accuracy / 100.0, f1)
 
 
 if __name__ == "__main__":
@@ -267,11 +276,48 @@ if __name__ == "__main__":
                 model.fc2.parameters(), lr=config.learning_rate, weight_decay=0.01
             )
             scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+
+            """
             train_loader = DataLoader(
                 train_dataset, batch_size=config.batch_size, shuffle=True
             )
             valid_loader = DataLoader(
                 valid_dataset, batch_size=config.batch_size, shuffle=False
+            )
+            """
+
+            # Load Data
+            training_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "training-preprocessing.npy",
+                run,
+                transform,
+            )
+
+            training_loader = DataLoader(
+                training_dataset, batch_size=config.batch_size, shuffle=True
+            )
+
+            validation_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "validation-preprocessing.npy",
+                run,
+                transform,
+            )
+
+            validation_loader = DataLoader(
+                validation_dataset, batch_size=config.batch_size, shuffle=False
+            )
+
+            test_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "test-preprocessing.npy",
+                run,
+                transform,
+            )
+
+            test_loader = DataLoader(
+                test_dataset, batch_size=config.batch_size, shuffle=False
             )
 
             history = train_model(
@@ -279,8 +325,8 @@ if __name__ == "__main__":
                 criterion,
                 optimizer,
                 scheduler,
-                train_loader,
-                valid_loader,
+                training_loader,
+                validation_loader,
                 num_epochs=25,
             )
 
