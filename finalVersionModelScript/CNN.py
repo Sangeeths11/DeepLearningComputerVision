@@ -118,7 +118,6 @@ class ImageClassifier:
             monitor="val_loss",
             patience=5,
             restore_best_weights=True,
-            start_from_epoch=10,
             verbose=1,
         )
 
