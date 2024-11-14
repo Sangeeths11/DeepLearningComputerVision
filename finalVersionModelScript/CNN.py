@@ -36,7 +36,7 @@ class ImageClassifier:
         self.image_size = image_size
         self.batch_size = batch_size
         self.model = None
-        wandb.init(project=project_name)
+        # wandb.init(project=project_name)
 
     def prepare_data(self, path_with_sign, path_without_sign):
         images_with_sign, labels_with_sign = load_images_from_folder(
@@ -192,30 +192,65 @@ class ImageClassifier:
 
 
 if __name__ == "__main__":
-    os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
-    optimizer = SweepOptimizer("VisionTransformer", "CNN-SWEEP", "test_acc")
-    best_params = optimizer.get_best_parameters()
+    with wandb.init(project="VisionTransformer") as run:
 
-    classifier = ImageClassifier(batch_size=best_params["batch_size"])
+        run.name = "CNN-Preprocessing"
 
-    path_with_sign = os.path.join(DATA_PATH, "y")
-    path_without_sign = os.path.join(DATA_PATH, "n")
-    (
-        train_images,
-        test_images,
-        validation_images,
-        train_labels,
-        test_labels,
-        validation_labels,
-    ) = classifier.prepare_data(path_with_sign, path_without_sign)
+        optimizer = SweepOptimizer(
+            "VisionTransformer", "CNN-Preprocessing", "epoch/val_accuracy"
+        )
+        best_params = optimizer.get_best_parameters()
 
-    classifier.build_model(best_params)
-    history = classifier.train(
-        train_images, train_labels, validation_images, validation_labels
-    )
+        classifier = ImageClassifier(batch_size=best_params["batch_size"])
 
-    classifier.evaluate(test_images, test_labels)
-    classifier.plot_training(history)
-    classifier.predict_and_report(test_images, test_labels)
-    classifier.save_model()
+        # Load Dataset
+        artifact = run.use_artifact(
+            "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+            type="dataset",
+        )
+
+        artifact_dir = artifact.download()
+
+        # Get Training Data
+        training_artifact = np.load(
+            os.path.join(artifact_dir, "training-preprocessing.npy")
+        )
+        training_images = training_artifact["images"]
+        training_labels = training_artifact["labels"]
+
+        # Get Validation Data
+        validation_artifact = np.load(
+            os.path.join(artifact_dir, "validation-preprocessing.npy")
+        )
+        validation_images = validation_artifact["images"]
+        validation_labels = validation_artifact["labels"]
+
+        # Get Test Data
+        test_artifact = np.load(os.path.join(artifact_dir, "test-preprocessing.npy"))
+        test_images = test_artifact["images"]
+        test_labels = test_artifact["labels"]
+
+        """
+        path_with_sign = os.path.join(DATA_PATH, "y")
+        path_without_sign = os.path.join(DATA_PATH, "n")
+        (
+            train_images,
+            test_images,
+            validation_images,
+            train_labels,
+            test_labels,
+            validation_labels,
+        ) = classifier.prepare_data(path_with_sign, path_without_sign)
+        """
+
+        classifier.build_model(best_params)
+        history = classifier.train(
+            training_images, training_labels, validation_images, validation_labels
+        )
+
+        classifier.evaluate(test_images, test_labels)
+        classifier.plot_training(history)
+        classifier.predict_and_report(test_images, test_labels)
+        classifier.save_model()
+
     wandb.finish()
