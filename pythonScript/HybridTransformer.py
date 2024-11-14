@@ -1,4 +1,5 @@
 import os
+import sys
 
 import cv2
 import matplotlib.pyplot as plt
@@ -275,91 +276,93 @@ def evaluate_model(model, criterion, test_loader, class_names):
     log_evaluation(test_loss, accuracy / 100.0, f1)
 
 
-def train_sweep():
-    with wandb.init() as run:
-        config = wandb.config
+if __name__ == "__main__":
+    sweep_id: str = sys.argv[1]
 
-        run.name = get_sweep_run_name(
-            config.learning_rate, config.batch_size, config.dropout
-        )
+    def train_sweep():
+        with wandb.init() as run:
+            config = wandb.config
 
-        model = HybridTransformerModel(dropout_rate=config.dropout).to(device)
-        optimizer = optim.Adam(
-            model.fc2.parameters(), lr=config.learning_rate, weight_decay=0.01
-        )
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+            run.name = get_sweep_run_name(
+                config.learning_rate, config.batch_size, config.dropout
+            )
 
-        """
-        train_loader = DataLoader(
-            train_dataset, batch_size=config.batch_size, shuffle=True
-        )
-        valid_loader = DataLoader(
-            valid_dataset, batch_size=config.batch_size, shuffle=False
-        )
-        """
+            model = HybridTransformerModel(dropout_rate=config.dropout).to(device)
+            optimizer = optim.Adam(
+                model.fc2.parameters(), lr=config.learning_rate, weight_decay=0.01
+            )
+            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
-        # Load Data
-        training_dataset = ArtifactDataset(
-            "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
-            "training-preprocessing.npy",
-            run,
-            transform,
-        )
+            """
+            train_loader = DataLoader(
+                train_dataset, batch_size=config.batch_size, shuffle=True
+            )
+            valid_loader = DataLoader(
+                valid_dataset, batch_size=config.batch_size, shuffle=False
+            )
+            """
 
-        training_loader = DataLoader(
-            training_dataset, batch_size=config.batch_size, shuffle=True
-        )
+            # Load Data
+            training_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "training-preprocessing.npy",
+                run,
+                transform,
+            )
 
-        validation_dataset = ArtifactDataset(
-            "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
-            "validation-preprocessing.npy",
-            run,
-            transform,
-        )
+            training_loader = DataLoader(
+                training_dataset, batch_size=config.batch_size, shuffle=True
+            )
 
-        validation_loader = DataLoader(
-            validation_dataset, batch_size=config.batch_size, shuffle=False
-        )
+            validation_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "validation-preprocessing.npy",
+                run,
+                transform,
+            )
 
-        test_dataset = ArtifactDataset(
-            "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
-            "test-preprocessing.npy",
-            run,
-            transform,
-        )
+            validation_loader = DataLoader(
+                validation_dataset, batch_size=config.batch_size, shuffle=False
+            )
 
-        test_loader = DataLoader(
-            test_dataset, batch_size=config.batch_size, shuffle=False
-        )
+            test_dataset = ArtifactDataset(
+                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "test-preprocessing.npy",
+                run,
+                transform,
+            )
 
-        history = train_model(
-            model,
-            criterion,
-            optimizer,
-            scheduler,
-            training_loader,
-            validation_loader,
-            num_epochs=25,
-        )
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-        axes[0].plot(history["train_accuracy"], label="Train")
-        axes[0].plot(history["val_accuracy"], label="Validation")
-        axes[0].set_title("Model Accuracy")
-        axes[0].set_xlabel("Epoch")
-        axes[0].set_ylabel("Accuracy")
-        axes[0].legend(loc="upper left")
-        axes[1].plot(history["train_loss"], label="Train")
-        axes[1].plot(history["val_loss"], label="Validation")
-        axes[1].set_title("Model Loss")
-        axes[1].set_xlabel("Epoch")
-        axes[1].set_ylabel("Loss")
-        axes[1].legend(loc="upper left")
-        plt.suptitle("Model Training - Hybrid Transformer", fontsize=16)
-        plt.tight_layout()
-        wandb.log({"training_plot": wandb.Image(fig)})
-        plt.close(fig)
-        evaluate_model(model, criterion, test_loader, class_names)
+            test_loader = DataLoader(
+                test_dataset, batch_size=config.batch_size, shuffle=False
+            )
 
+            history = train_model(
+                model,
+                criterion,
+                optimizer,
+                scheduler,
+                training_loader,
+                validation_loader,
+                num_epochs=25,
+            )
+            fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+            axes[0].plot(history["train_accuracy"], label="Train")
+            axes[0].plot(history["val_accuracy"], label="Validation")
+            axes[0].set_title("Model Accuracy")
+            axes[0].set_xlabel("Epoch")
+            axes[0].set_ylabel("Accuracy")
+            axes[0].legend(loc="upper left")
+            axes[1].plot(history["train_loss"], label="Train")
+            axes[1].plot(history["val_loss"], label="Validation")
+            axes[1].set_title("Model Loss")
+            axes[1].set_xlabel("Epoch")
+            axes[1].set_ylabel("Loss")
+            axes[1].legend(loc="upper left")
+            plt.suptitle("Model Training - Hybrid Transformer", fontsize=16)
+            plt.tight_layout()
+            wandb.log({"training_plot": wandb.Image(fig)})
+            plt.close(fig)
+            evaluate_model(model, criterion, test_loader, class_names)
 
-wandb.agent(sweep_id, train_sweep)
-wandb.finish()
+    wandb.agent(sweep_id, train_sweep)
+    wandb.finish()
