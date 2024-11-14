@@ -191,9 +191,9 @@ def train_model(
         wandb.log(
             {
                 "train_loss": epoch_loss,
-                "train_accuracy": epoch_accuracy,
+                "train_accuracy": epoch_accuracy / 100.0,
                 "val_loss": val_loss,
-                "val_accuracy": val_accuracy,
+                "val_accuracy": val_accuracy / 100.0,
             }
         )
 
