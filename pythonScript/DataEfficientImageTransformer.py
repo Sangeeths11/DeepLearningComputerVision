@@ -15,8 +15,9 @@ from modules.data_preprocessing import (  # type: ignore
     apply_morphology,
     black_and_white,
 )
+from modules.wandb_integration import get_sweep_run_name, log_evaluation
 from PIL import Image
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms
 
@@ -253,7 +254,9 @@ def evaluate_model(model, criterion, test_loader, class_names):
     wandb.log({"confusion_matrix": wandb.Image(fig)})
     plt.close(fig)
 
-    wandb.log({"test_loss": test_loss, "test_accuracy": accuracy})
+    f1 = f1_score(all_labels, all_preds)
+
+    log_evaluation(test_loss, accuracy / 100.0, f1)
 
 
 if __name__ == "__main__":
@@ -263,7 +266,9 @@ if __name__ == "__main__":
         with wandb.init() as run:
             config = wandb.config
 
-            run.name = f"lr_{config.learning_rate}_bs_{config.batch_size}_do_{config.dropout:.2f}"
+            run.name = get_sweep_run_name(
+                config.learning_rate, config.batch_size, config.dropout
+            )
 
             model = DeiTModel(dropout_rate=config.dropout).to(device)
             criterion = nn.CrossEntropyLoss()
