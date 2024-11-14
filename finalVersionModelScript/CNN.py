@@ -112,10 +112,14 @@ class ImageClassifier:
         )
 
         reduce_lr = callbacks.ReduceLROnPlateau(
-            monitor="val_loss", factor=0.2, patience=3, min_lr=0.00001
+            monitor="val_loss", factor=0.2, patience=3, min_lr=0.00001, verbose=1
         )
         early_stopping = callbacks.EarlyStopping(
-            monitor="val_loss", patience=5, restore_best_weights=True
+            monitor="val_loss",
+            patience=5,
+            restore_best_weights=True,
+            start_from_epoch=10,
+            verbose=1,
         )
 
         history = self.model.fit(
@@ -192,6 +196,9 @@ class ImageClassifier:
 
 
 if __name__ == "__main__":
+
+    os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+
     with wandb.init(project="VisionTransformer") as run:
 
         run.name = "CNN-Preprocessing"
