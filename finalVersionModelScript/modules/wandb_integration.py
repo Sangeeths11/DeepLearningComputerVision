@@ -19,6 +19,8 @@ class SweepOptimizer:
             "InceptionV3-No-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/5tgfus11",
             "ViT-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/7ua3y0zb",
             "ViT-No-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/djh0rono",
+            "ViT-Lite-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/gq7txjmr",
+            "ViT-Lite-No-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/j8cvc57e",
         }
         return SWEEPS.get(self.sweep_name)
 
