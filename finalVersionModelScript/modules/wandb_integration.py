@@ -15,6 +15,8 @@ class SweepOptimizer:
         SWEEPS = {
             "CNN-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/9s8rypbr",
             "CNN-No-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/xwj719oh",
+            "InceptionV3-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/eqzgy80f",
+            "InceptionV3-No-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/5tgfus11",
         }
         return SWEEPS.get(self.sweep_name)
 
