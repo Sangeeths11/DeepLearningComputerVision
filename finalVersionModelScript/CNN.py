@@ -18,7 +18,7 @@ from modules.wandb_integration import (
     log_image,
     log_model_artifact,
 )
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.model_selection import train_test_split
 from wandb.integration.keras import WandbMetricsLogger
 
@@ -133,7 +133,13 @@ class ImageClassifier:
 
     def evaluate(self, test_images, test_labels):
         test_loss, test_acc = self.model.evaluate(test_images, test_labels)
-        log_evaluation(test_loss, test_acc)
+
+        model_prediction = (self.model.predict(test_images) > 0.5).astype(int)
+
+        f1 = f1_score(test_labels, model_prediction)
+
+        log_evaluation(test_loss, test_acc, f1)
+
         return test_loss, test_acc
 
     def plot_training(self, history):
@@ -158,6 +164,7 @@ class ImageClassifier:
         plt.suptitle("Model Training - Basic CNN")
         plt.tight_layout()
         log_image("training_plot.png", plt)
+        plt.close()
 
     def predict_and_report(self, test_images, test_labels):
         predictions = (self.model.predict(test_images) > 0.5).astype(int)
@@ -188,6 +195,7 @@ class ImageClassifier:
         plt.ylabel("True Labels")
         plt.title("Confusion Matrix - Basic CNN Model")
         log_image("confusion_matrix.png", plt)
+        plt.close()
 
     def save_model(self):
         self.model.save("cnn_model.h5")
@@ -198,20 +206,20 @@ if __name__ == "__main__":
 
     os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
-    with wandb.init(project="VisionTransformer") as run:
+    optimizer = SweepOptimizer(
+        "VisionTransformer", "CNN-No-Preprocessing", "epoch/val_accuracy"
+    )
+    best_params = optimizer.get_best_parameters()
 
-        run.name = "CNN-Preprocessing"
+    with wandb.init(project="VisionTransformer", config=best_params) as run:
 
-        optimizer = SweepOptimizer(
-            "VisionTransformer", "CNN-Preprocessing", "epoch/val_accuracy"
-        )
-        best_params = optimizer.get_best_parameters()
+        run.name = "CNN-No-Preprocessing"
 
         classifier = ImageClassifier(batch_size=best_params["batch_size"])
 
         # Load Dataset
         artifact = run.use_artifact(
-            "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+            "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-no-preprocessing:v0",
             type="dataset",
         )
 
@@ -219,20 +227,20 @@ if __name__ == "__main__":
 
         # Get Training Data
         training_artifact = np.load(
-            os.path.join(artifact_dir, "training-preprocessing.npy")
+            os.path.join(artifact_dir, "training-no-preprocessing.npy")
         )
         training_images = training_artifact["images"]
         training_labels = training_artifact["labels"]
 
         # Get Validation Data
         validation_artifact = np.load(
-            os.path.join(artifact_dir, "validation-preprocessing.npy")
+            os.path.join(artifact_dir, "validation-no-preprocessing.npy")
         )
         validation_images = validation_artifact["images"]
         validation_labels = validation_artifact["labels"]
 
         # Get Test Data
-        test_artifact = np.load(os.path.join(artifact_dir, "test-preprocessing.npy"))
+        test_artifact = np.load(os.path.join(artifact_dir, "test-no-preprocessing.npy"))
         test_images = test_artifact["images"]
         test_labels = test_artifact["labels"]
 

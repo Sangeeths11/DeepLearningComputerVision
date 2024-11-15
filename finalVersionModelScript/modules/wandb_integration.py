@@ -14,8 +14,7 @@ class SweepOptimizer:
     def _get_sweep_id(self):
         SWEEPS = {
             "CNN-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/9s8rypbr",
-            "INCEPTION-SWEEP": "silvan-wiedmer-fhgr/VisionTransformer/5ghtealo",
-            "VISION-TRANSFORMER-SWEEP": "silvan-wiedmer-fhgr/VisionTransformer/fpspjbrh",
+            "CNN-No-Preprocessing": "silvan-wiedmer-fhgr/VisionTransformer/xwj719oh",
         }
         return SWEEPS.get(self.sweep_name)
 
@@ -41,8 +40,8 @@ class SweepOptimizer:
         return best_params
 
 
-def log_evaluation(loss: float, accuracy: float) -> None:
-    wandb.log({"test_loss": loss, "test_acc": accuracy})
+def log_evaluation(loss: float, accuracy: float, f1: float = 0) -> None:
+    wandb.log({"test_loss": loss, "test_acc": accuracy, "test_f1": f1})
 
 
 def log_image(image_name: str, image):

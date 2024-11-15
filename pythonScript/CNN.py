@@ -137,6 +137,7 @@ class ImageClassifier:
         f1 = f1_score(test_labels, model_prediction)
 
         log_evaluation(test_loss, test_acc, f1)
+
         return test_loss, test_acc
 
     def plot_training(self, history):
