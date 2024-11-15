@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import tensorflow as tf
-from keras import applications, layers, models, optimizers, regularizers
+from keras import applications, callbacks, layers, models, optimizers, regularizers
 from modules.data_augmentation import (
     get_test_image_data_generator,
     get_train_image_data_generator,
@@ -97,6 +97,16 @@ if __name__ == "__main__":
 
         model = build_model(config.dropout, config.learning_rate)
 
+        reduce_lr = callbacks.ReduceLROnPlateau(
+            monitor="val_loss", factor=0.2, patience=3, min_lr=0.00001, verbose=1
+        )
+        early_stopping = callbacks.EarlyStopping(
+            monitor="val_loss",
+            patience=5,
+            restore_best_weights=True,
+            verbose=1,
+        )
+
         history = model.fit(
             train_generator,
             steps_per_epoch=len(training_images) // config.batch_size,
@@ -104,7 +114,7 @@ if __name__ == "__main__":
             epochs=100,
             validation_data=validation_generator,
             validation_steps=len(validation_images) // config.batch_size,
-            callbacks=[WandbMetricsLogger()],
+            callbacks=[WandbMetricsLogger(), reduce_lr, early_stopping],
         )
 
         test_loss, test_acc = model.evaluate(test_images, test_labels)
