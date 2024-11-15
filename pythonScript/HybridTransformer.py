@@ -151,7 +151,7 @@ sweep_config = {
     },
 }
 
-sweep_id = wandb.sweep(sweep_config, project="HybridTransformer")
+# sweep_id = wandb.sweep(sweep_config, project="HybridTransformer")
 
 
 def validate_model(model, criterion, valid_loader):
