@@ -5,6 +5,7 @@ model_metrics.tex
 .venv/
 .vscode/
 /data
+/ecg_image_data
 wandb
 __pycache__
 artifacts/
