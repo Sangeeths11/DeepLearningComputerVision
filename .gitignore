@@ -1,5 +1,6 @@
 # Files
 model_metrics.tex
+.DS_Store
 
 # Folders
 .venv/
