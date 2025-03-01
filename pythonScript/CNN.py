@@ -126,7 +126,7 @@ class ImageClassifier:
         history = self.model.fit(
             train_generator,
             steps_per_epoch=len(train_images) // self.batch_size,
-            epochs=1,
+            epochs=25,
             validation_data=validation_generator,
             validation_steps=len(validation_images) // self.batch_size,
             callbacks=[WandbMetricsLogger(), reduce_lr, early_stopping],
@@ -138,7 +138,11 @@ class ImageClassifier:
 
         model_prediction = self.model.predict(test_images)
 
-        f1 = f1_score(test_labels, model_prediction)
+        f1 = f1_score(
+            decode_one_hot_labels(test_labels),
+            decode_one_hot_labels(model_prediction),
+            average="weighted",
+        )
 
         log_evaluation(test_loss, test_acc, f1)
 
@@ -172,18 +176,20 @@ class ImageClassifier:
 
     def predict_and_report(self, test_images, test_labels):
         predictions = self.model.predict(test_images)
+        predictions_decoded = decode_one_hot_labels(predictions)
+        test_labels_decoded = decode_one_hot_labels(test_labels)
         namelabels = {0: "F", 1: "M", 2: "N", 3: "Q", 4: "S", 5: "V"}
-        for i in range(len(test_images)):
+        for i in range(10):
             wandb.log(
                 {
                     "image": [
                         wandb.Image(
                             test_images[i],
-                            caption=f"Prediction: {predictions[i]}, True: {test_labels[i]}",
+                            caption=f"Prediction: {predictions_decoded[i]}, True: {test_labels_decoded[i]}",
                         )
                     ],
-                    "prediction": predictions[i],
-                    "true_label": test_labels[i],
+                    "prediction": predictions_decoded[i],
+                    "true_label": test_labels_decoded[i],
                 }
             )
 
@@ -196,8 +202,8 @@ class ImageClassifier:
             annot=True,
             cmap="Blues",
             fmt="d",
-            xticklabels=["Wartelinie", "keine Wartelinie"],
-            yticklabels=["Wartelinie", "keine Wartelinie"],
+            xticklabels=namelabels.values(),
+            yticklabels=namelabels.values(),
         )
         plt.xlabel("Predicted Labels")
         plt.ylabel("True Labels")
