@@ -30,9 +30,13 @@ matplotlib.use("Agg")
 DATA_PATH = os.path.join(".", "data")
 
 
+def decode_one_hot_labels(labels):
+    return np.argmax(labels, axis=1)
+
+
 class ImageClassifier:
     def __init__(
-        self, image_size=(250, 250), batch_size=32, project_name="VisionTransformer"
+        self, image_size=(224, 224), batch_size=32, project_name="VisionTransformer"
     ):
         self.image_size = image_size
         self.batch_size = batch_size
@@ -91,12 +95,12 @@ class ImageClassifier:
                 layers.Flatten(),
                 layers.Dense(128, activation="relu"),
                 layers.Dropout(config.dropout),
-                layers.Dense(1, activation="sigmoid"),
+                layers.Dense(6, activation="softmax"),
             ]
         )
         model.compile(
             optimizer=optimizers.Adam(learning_rate=config.learning_rate),
-            loss="binary_crossentropy",
+            loss="categorical_crossentropy",
             metrics=["accuracy"],
         )
         self.model = model
@@ -122,7 +126,7 @@ class ImageClassifier:
         history = self.model.fit(
             train_generator,
             steps_per_epoch=len(train_images) // self.batch_size,
-            epochs=20,
+            epochs=1,
             validation_data=validation_generator,
             validation_steps=len(validation_images) // self.batch_size,
             callbacks=[WandbMetricsLogger(), reduce_lr, early_stopping],
@@ -132,7 +136,7 @@ class ImageClassifier:
     def evaluate(self, test_images, test_labels):
         test_loss, test_acc = self.model.evaluate(test_images, test_labels)
 
-        model_prediction = (self.model.predict(test_images) > 0.5).astype(int)
+        model_prediction = self.model.predict(test_images)
 
         f1 = f1_score(test_labels, model_prediction)
 
@@ -167,7 +171,8 @@ class ImageClassifier:
         # plt.close()  # Close the plot to avoid tkinter errors
 
     def predict_and_report(self, test_images, test_labels):
-        predictions = (self.model.predict(test_images) > 0.5).astype(int)
+        predictions = self.model.predict(test_images)
+        namelabels = {0: "F", 1: "M", 2: "N", 3: "Q", 4: "S", 5: "V"}
         for i in range(len(test_images)):
             wandb.log(
                 {
@@ -183,7 +188,9 @@ class ImageClassifier:
             )
 
         # Log confusion matrix
-        cm = confusion_matrix(test_labels, predictions)
+        cm = confusion_matrix(
+            decode_one_hot_labels(test_labels), decode_one_hot_labels(predictions)
+        )
         sns.heatmap(
             cm,
             annot=True,
@@ -214,7 +221,7 @@ if __name__ == "__main__":
     os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
     def sweep_agent():
-        with wandb.init() as run:
+        with wandb.init(entity="@ass") as run:
             config = wandb.config
 
             run.name = get_sweep_run_name(
@@ -225,7 +232,7 @@ if __name__ == "__main__":
 
             # Load Dataset
             artifact = run.use_artifact(
-                "silvan-wiedmer-fhgr/VisionTransformer/swissimage-10cm-preprocessing:v1",
+                "@ass/VisionTransformer/ecg-image-data-no-preprocessing:v3",
                 type="dataset",
             )
 
@@ -233,21 +240,21 @@ if __name__ == "__main__":
 
             # Get Training Data
             training_artifact = np.load(
-                os.path.join(artifact_dir, "training-preprocessing.npy")
+                os.path.join(artifact_dir, "training-no-preprocessing.npy")
             )
             training_images = training_artifact["images"]
             training_labels = training_artifact["labels"]
 
             # Get Validation Data
             validation_artifact = np.load(
-                os.path.join(artifact_dir, "validation-preprocessing.npy")
+                os.path.join(artifact_dir, "validation-no-preprocessing.npy")
             )
             validation_images = validation_artifact["images"]
             validation_labels = validation_artifact["labels"]
 
             # Get Test Data
             test_artifact = np.load(
-                os.path.join(artifact_dir, "test-preprocessing.npy")
+                os.path.join(artifact_dir, "test-no-preprocessing.npy")
             )
             test_images = test_artifact["images"]
             test_labels = test_artifact["labels"]
